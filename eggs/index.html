@@ -1,0 +1,320 @@
+<meta charset="utf-8">
+<title>Jump Street Egg Tiers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Same layout as Jump Street Aura Tiers: tier rows + unranked pool + full-screen one-by-one viewer.
+   Single dark look on purpose: game renders read best on near-black. */
+:root{
+  color-scheme:dark;
+  --bg:#0b0b12; --panel:#14141f; --lane:#191927; --line:#2a2a3d; --fg:#ececf4; --muted:#9a9ab3; --accent:#ffd34d;
+  --t-mythic:#ff2d6e; --t-legendary:#ffc828; --t-epic:#b955ff; --t-rare:#46a0ff; --t-uncommon:#3ccf6e; --t-common:#d2d6de;
+  --display:"Russo One","Arial Black",system-ui,sans-serif; --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 60px}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,38px);margin:0;letter-spacing:.02em;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.progress{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;padding:8px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
+.progress b{color:var(--accent)}
+button{font:inherit;font-weight:600;font-size:14px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:#1a1405;border-color:var(--accent)}
+button.danger.armed{background:#5a1020;border-color:var(--t-mythic)}
+.status{font-size:12px;color:var(--muted);min-height:1em}
+.tiers{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:112px 1fr;min-height:132px;background:var(--lane);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;color:#111;font-family:var(--display);text-align:center}
+.label .name{font-size:15px;letter-spacing:.04em;text-transform:uppercase;line-height:1.1}
+.label .count{font-family:var(--body);font-weight:700;font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}
+.lane{display:flex;flex-wrap:wrap;gap:6px;padding:6px;align-content:flex-start;min-width:0}
+.lane.over{background:rgba(255,211,77,.08);box-shadow:inset 0 0 0 2px var(--accent)}
+.empty{color:var(--muted);font-size:12px;align-self:center;padding:0 8px}
+.card{position:relative;width:104px;border-radius:8px;overflow:hidden;cursor:pointer;background:radial-gradient(circle at 50% 40%,#2b2b40,#101018);border:1px solid var(--line);flex:none}
+.card img{width:100%;aspect-ratio:1;object-fit:contain;display:block;pointer-events:none}
+.card .nm{font-size:11px;font-weight:600;padding:3px 5px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,.45)}
+.card .gr{position:absolute;right:4px;top:4px;width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.6)}
+.card.dragging{opacity:.35}
+.pool-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pool-head h2{font-family:var(--display);font-weight:400;font-size:18px;margin:0;letter-spacing:.03em}
+.pool{background:var(--panel);border:1px dashed var(--line);border-radius:10px;min-height:150px}
+.pool .card{width:128px}
+.hint{color:var(--muted);font-size:12px}
+.insp[hidden]{display:none}
+.insp{position:fixed;inset:0;z-index:20;background:rgba(5,5,10,.94);display:flex;align-items:center;justify-content:center;
+  padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.insp-box{display:grid;grid-template-columns:auto minmax(0,320px);gap:20px;align-items:center;max-width:100%;max-height:100%}
+.insp-img{position:relative;height:min(78vh,640px);aspect-ratio:1;max-width:100%;border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#2b2b40,#08080d);border:1px solid var(--line)}
+.insp-img img{width:100%;height:100%;object-fit:contain;display:block}
+.insp-side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.insp-num{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.insp-name{font-family:var(--display);font-size:28px;line-height:1.1;overflow-wrap:anywhere}
+.insp-cur{font-size:13px;color:var(--muted)}
+.tierbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tierbtns button{color:#111;border:none;font-family:var(--display);font-weight:400;letter-spacing:.04em;text-transform:uppercase;font-size:13px;padding:10px 8px;display:flex;justify-content:space-between;align-items:center}
+.tierbtns button kbd{font-family:var(--body);font-size:11px;font-weight:700;background:rgba(0,0,0,.18);border-radius:4px;padding:1px 6px}
+.tierbtns button.on{outline:3px solid #fff;outline-offset:1px}
+.nav{display:flex;gap:6px;flex-wrap:wrap}
+.nav button{flex:1}
+.close{position:absolute;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px))}
+@media (max-width:720px){
+  .row{grid-template-columns:76px 1fr;min-height:100px}
+  .label .name{font-size:11px}
+  .card,.pool .card{width:84px}
+  .insp-box{grid-template-columns:1fr;gap:10px;justify-items:center;overflow:auto;max-height:100%}
+  .insp-img{height:auto;width:min(100%,46vh)}
+  .insp-side{width:100%;max-width:420px}
+  .insp-name{font-size:22px}
+}
+@media (prefers-reduced-motion:no-preference){.card{transition:transform .12s}.card:hover{transform:translateY(-2px)}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Jump Street Egg Tiers</h1>
+      <div class="sub">60 eggs: the 38 at the egg station, the Whimsical display egg, 5 decoration eggs and 16 unnamed spare eggs from storage. Drag a card into a tier, or open one to see it big and rank it. The dot on a card is its rarity in the game today.</div>
+    </div>
+    <div class="bar">
+      <span class="progress" id="progress"></span>
+      <button class="primary" id="startBtn" type="button">Rank one by one</button>
+      <button id="copyBtn" type="button">Copy ranking</button>
+      <button class="danger" id="resetBtn" type="button">Reset</button>
+    </div>
+  </header>
+  <div class="status" id="status" role="status"></div>
+  <section class="tiers" id="tiers" aria-label="Tiers"></section>
+  <div class="pool-head"><h2>Unranked <span id="poolCount"></span></h2><span class="hint">Keys in the big view: 1–6 place it, ← → move, Esc closes</span></div>
+  <section class="lane pool" id="pool" data-tier="pool" aria-label="Unranked"></section>
+</div>
+
+<div class="insp" id="insp" hidden role="dialog" aria-modal="true" aria-labelledby="inspName">
+  <button class="close" id="inspClose" type="button">Close</button>
+  <div class="insp-box">
+    <div class="insp-img"><img id="inspImg" alt=""></div>
+    <div class="insp-side">
+      <div class="insp-num" id="inspNum"></div>
+      <div class="insp-name" id="inspName"></div>
+      <div class="insp-cur" id="inspCur"></div>
+      <div class="tierbtns" id="tierBtns"></div>
+      <div class="nav">
+        <button id="prevBtn" type="button">← Previous</button>
+        <button id="nextBtn" type="button">Next →</button>
+      </div>
+      <div class="nav">
+        <button id="skipBtn" type="button">Next unranked</button>
+        <button id="unrankBtn" type="button">Take out of tier</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ITEMS=[{"id": "AngelEgg", "name": "AngelEgg", "img": "img/AngelEgg.png", "rarity": "", "cash": 110, "shopOrder": 1}, {"id": "CrackGreenEgg", "name": "CrackGreenEgg", "img": "img/CrackGreenEgg.png", "rarity": "", "cash": 121, "shopOrder": 2}, {"id": "Daytime_Egg", "name": "Daytime Egg", "img": "img/Daytime_Egg.png", "rarity": "", "cash": 133, "shopOrder": 3}, {"id": "DragonEgg", "name": "DragonEgg", "img": "img/DragonEgg.png", "rarity": "", "cash": 146, "shopOrder": 4}, {"id": "Egg", "name": "Egg", "img": "img/Egg.png", "rarity": "", "cash": 161, "shopOrder": 5}, {"id": "Eggcellent_Choices", "name": "Eggcellent Choices", "img": "img/Eggcellent_Choices.png", "rarity": "", "cash": 177, "shopOrder": 6}, {"id": "Eggdini", "name": "Eggdini", "img": "img/Eggdini.png", "rarity": "", "cash": 195, "shopOrder": 7}, {"id": "FaberziEgg", "name": "FaberziEgg", "img": "img/FaberziEgg.png", "rarity": "", "cash": 214, "shopOrder": 8}, {"id": "Fashionista_Egg__The_Fierce", "name": "Fashionista Egg, The Fierce", "img": "img/Fashionista_Egg__The_Fierce.png", "rarity": "", "cash": 236, "shopOrder": 9}, {"id": "Flight_of_the_Bumble_Egg", "name": "Flight of the Bumble Egg", "img": "img/Flight_of_the_Bumble_Egg.png", "rarity": "", "cash": 259, "shopOrder": 10}, {"id": "Golden_Glitter_Egg", "name": "Golden Glitter Egg", "img": "img/Golden_Glitter_Egg.png", "rarity": "", "cash": 285, "shopOrder": 11}, {"id": "Hallow", "name": "Hallow", "img": "img/Hallow.png", "rarity": "", "cash": 314, "shopOrder": 12}, {"id": "HardBoiledTreasureEgg", "name": "HardBoiledTreasureEgg", "img": "img/HardBoiledTreasureEgg.png", "rarity": "", "cash": 345, "shopOrder": 13}, {"id": "Icebreaker__Egg", "name": "Icebreaker! Egg", "img": "img/Icebreaker__Egg.png", "rarity": "", "cash": 380, "shopOrder": 14}, {"id": "JungleTempleEgg", "name": "JungleTempleEgg", "img": "img/JungleTempleEgg.png", "rarity": "", "cash": 418, "shopOrder": 15}, {"id": "Kaboom_Egg", "name": "Kaboom Egg", "img": "img/Kaboom_Egg.png", "rarity": "", "cash": 459, "shopOrder": 16}, {"id": "malte2505_s_Egg_Of_Dragon_Nightmares", "name": "malte2505's Egg Of Dragon Nightmares", "img": "img/malte2505_s_Egg_Of_Dragon_Nightmares.png", "rarity": "", "cash": 505, "shopOrder": 17}, {"id": "MarsEgg", "name": "MarsEgg", "img": "img/MarsEgg.png", "rarity": "", "cash": 556, "shopOrder": 18}, {"id": "Mc_Egger", "name": "Mc Egger", "img": "img/Mc_Egger.png", "rarity": "", "cash": 612, "shopOrder": 19}, {"id": "Missing_Egg_of_ARG", "name": "Missing Egg of ARG", "img": "img/Missing_Egg_of_ARG.png", "rarity": "", "cash": 673, "shopOrder": 20}, {"id": "NewtonEgg", "name": "NewtonEgg", "img": "img/NewtonEgg.png", "rarity": "", "cash": 740, "shopOrder": 21}, {"id": "Obsidian_Egg", "name": "Obsidian Egg", "img": "img/Obsidian_Egg.png", "rarity": "", "cash": 814, "shopOrder": 22}, {"id": "PrehistoricEgg", "name": "PrehistoricEgg", "img": "img/PrehistoricEgg.png", "rarity": "", "cash": 895, "shopOrder": 23}, {"id": "PresentEgg", "name": "PresentEgg", "img": "img/PresentEgg.png", "rarity": "", "cash": 985, "shopOrder": 24}, {"id": "RadioEgg", "name": "RadioEgg", "img": "img/RadioEgg.png", "rarity": "", "cash": 1083, "shopOrder": 25}, {"id": "Rainbow_Egg", "name": "Rainbow Egg", "img": "img/Rainbow_Egg.png", "rarity": "", "cash": 1192, "shopOrder": 26}, {"id": "Retro_Egg__The_Geometric", "name": "Retro Egg, The Geometric", "img": "img/Retro_Egg__The_Geometric.png", "rarity": "", "cash": 1311, "shopOrder": 27}, {"id": "RockCandyEgg", "name": "RockCandyEgg", "img": "img/RockCandyEgg.png", "rarity": "", "cash": 1442, "shopOrder": 28}, {"id": "Roller-eggster", "name": "Roller-eggster", "img": "img/Roller-eggster.png", "rarity": "", "cash": 1586, "shopOrder": 29}, {"id": "Snake", "name": "Snake", "img": "img/Snake.png", "rarity": "", "cash": 1745, "shopOrder": 30}, {"id": "TeacupEgg", "name": "TeacupEgg", "img": "img/TeacupEgg.png", "rarity": "", "cash": 1919, "shopOrder": 31}, {"id": "The_Egg_of_Origin", "name": "The Egg of Origin", "img": "img/The_Egg_of_Origin.png", "rarity": "", "cash": 2111, "shopOrder": 32}, {"id": "Tier_13", "name": "Tier 13", "img": "img/Tier_13.png", "rarity": "", "cash": 2323, "shopOrder": 33}, {"id": "Tier_15", "name": "Tier 15", "img": "img/Tier_15.png", "rarity": "", "cash": 2555, "shopOrder": 34}, {"id": "Tier_2", "name": "Tier 2", "img": "img/Tier_2.png", "rarity": "", "cash": 2810, "shopOrder": 35}, {"id": "Tier_7", "name": "Tier 7", "img": "img/Tier_7.png", "rarity": "", "cash": 3091, "shopOrder": 36}, {"id": "Tier_8", "name": "Tier 8", "img": "img/Tier_8.png", "rarity": "", "cash": 3400, "shopOrder": 37}, {"id": "WonderlandTreasureEgg", "name": "WonderlandTreasureEgg", "img": "img/WonderlandTreasureEgg.png", "rarity": "", "cash": 3740, "shopOrder": 38}, {"id": "Whimsical_Egg__the_Wonderful", "name": "Whimsical Egg, the Wonderful", "img": "img/Whimsical_Egg__the_Wonderful.png", "rarity": ""}, {"id": "Dark_Serpent_Egg", "name": "Dark Serpent Egg", "img": "img/Dark_Serpent_Egg.png", "rarity": ""}, {"id": "Emerald_Egg", "name": "Emerald Egg", "img": "img/Emerald_Egg.png", "rarity": ""}, {"id": "Nightmare_Egg", "name": "Nightmare Egg", "img": "img/Nightmare_Egg.png", "rarity": ""}, {"id": "Urchin_Egg", "name": "Urchin Egg", "img": "img/Urchin_Egg.png", "rarity": ""}, {"id": "Void_Shard_Egg", "name": "Void Shard Egg", "img": "img/Void_Shard_Egg.png", "rarity": ""}, {"id": "Spare_Egg_1", "name": "Spare Egg 1", "img": "img/Spare_Egg_1.png", "rarity": ""}, {"id": "Spare_Egg_2", "name": "Spare Egg 2", "img": "img/Spare_Egg_2.png", "rarity": ""}, {"id": "Spare_Egg_3", "name": "Spare Egg 3", "img": "img/Spare_Egg_3.png", "rarity": ""}, {"id": "Spare_Egg_4", "name": "Spare Egg 4", "img": "img/Spare_Egg_4.png", "rarity": ""}, {"id": "Spare_Egg_5", "name": "Spare Egg 5", "img": "img/Spare_Egg_5.png", "rarity": ""}, {"id": "Spare_Egg_6", "name": "Spare Egg 6", "img": "img/Spare_Egg_6.png", "rarity": ""}, {"id": "Spare_Egg_7", "name": "Spare Egg 7", "img": "img/Spare_Egg_7.png", "rarity": ""}, {"id": "Spare_Egg_8", "name": "Spare Egg 8", "img": "img/Spare_Egg_8.png", "rarity": ""}, {"id": "Spare_Egg_9", "name": "Spare Egg 9", "img": "img/Spare_Egg_9.png", "rarity": ""}, {"id": "Spare_Egg_10", "name": "Spare Egg 10", "img": "img/Spare_Egg_10.png", "rarity": ""}, {"id": "Spare_Egg_11", "name": "Spare Egg 11", "img": "img/Spare_Egg_11.png", "rarity": ""}, {"id": "Spare_Egg_12", "name": "Spare Egg 12", "img": "img/Spare_Egg_12.png", "rarity": ""}, {"id": "Spare_Egg_13", "name": "Spare Egg 13", "img": "img/Spare_Egg_13.png", "rarity": ""}, {"id": "Spare_Egg_14", "name": "Spare Egg 14", "img": "img/Spare_Egg_14.png", "rarity": ""}, {"id": "Spare_Egg_15", "name": "Spare Egg 15", "img": "img/Spare_Egg_15.png", "rarity": ""}, {"id": "Spare_Egg_16", "name": "Spare Egg 16", "img": "img/Spare_Egg_16.png", "rarity": ""}]; // [{id,name,img,rarity}] from the game's own data, game order
+const KIND="eggs";
+const TIERS=[
+  {key:"mythic",name:"Mythic",color:"var(--t-mythic)"},
+  {key:"legendary",name:"Legendary",color:"var(--t-legendary)"},
+  {key:"epic",name:"Epic",color:"var(--t-epic)"},
+  {key:"rare",name:"Rare",color:"var(--t-rare)"},
+  {key:"uncommon",name:"Uncommon",color:"var(--t-uncommon)"},
+  {key:"common",name:"Common",color:"var(--t-common)"},
+];
+const N=ITEMS.length;
+const IDS=ITEMS.map(it=>it.id);
+const BY=Object.fromEntries(ITEMS.map((it,i)=>[it.id,{...it,n:i+1}]));
+const EXTRA={godly:"#ff7a00",divine:"#ffffff",celestial:"#5ef2ff"}; // game-only tiers above Mythic (shoes)
+const gameColor=r=>{const k=String(r||"").toLowerCase();const t=TIERS.find(t=>t.key===k);return t?t.color:(EXTRA[k]||"transparent")};
+const emptyState=()=>Object.fromEntries(TIERS.map(t=>[t.key,[]]));
+let state=emptyState(); // tier -> [item id] in display order
+
+const $=id=>document.getElementById(id);
+const statusEl=$("status");
+function tierOf(id){for(const t of TIERS){if(state[t.key].includes(id))return t.key}return null}
+function normalize(s){
+  const out=emptyState(),seen=new Set();
+  if(s&&typeof s==="object")for(const t of TIERS){const arr=Array.isArray(s[t.key])?s[t.key]:[];for(const v of arr){if(typeof v==="string"&&BY[v]&&!seen.has(v)){seen.add(v);out[t.key].push(v)}}}
+  return out;
+}
+
+function makeCard(id){
+  const it=BY[id];
+  const c=document.createElement("div");
+  c.className="card";c.tabIndex=0;c.draggable=true;c.dataset.id=id;
+  c.setAttribute("role","button");c.setAttribute("aria-label",it.name);c.title=it.name+(it.rarity?" (game: "+it.rarity+")":"");
+  const im=document.createElement("img");im.src=it.img;im.alt="";im.loading="lazy";
+  const nm=document.createElement("div");nm.className="nm";nm.textContent=it.name;
+  const gr=document.createElement("span");gr.className="gr";gr.style.background=gameColor(it.rarity);
+  c.append(im,nm,gr);
+  c.addEventListener("click",()=>openInsp(id));
+  c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openInsp(id)}});
+  c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",id);e.dataTransfer.effectAllowed="move";c.classList.add("dragging")});
+  c.addEventListener("dragend",()=>c.classList.remove("dragging"));
+  return c;
+}
+function wireLane(lane){
+  lane.addEventListener("dragover",e=>{e.preventDefault();lane.classList.add("over")});
+  lane.addEventListener("dragleave",e=>{if(!lane.contains(e.relatedTarget))lane.classList.remove("over")});
+  lane.addEventListener("drop",e=>{
+    e.preventDefault();lane.classList.remove("over");
+    const id=e.dataTransfer.getData("text/plain");if(!BY[id])return;
+    const target=e.target.closest&&e.target.closest(".card");
+    place(id,lane.dataset.tier,target?target.dataset.id:null);
+  });
+}
+const tiersEl=$("tiers"),poolEl=$("pool");
+const lanes={};
+for(const t of TIERS){
+  const row=document.createElement("div");row.className="row";row.dataset.tier=t.key;
+  const lab=document.createElement("div");lab.className="label";lab.style.background=t.color;
+  const nm=document.createElement("span");nm.className="name";nm.textContent=t.name;
+  const ct=document.createElement("span");ct.className="count";lab.append(nm,ct);
+  const lane=document.createElement("div");lane.className="lane";lane.dataset.tier=t.key;lane.setAttribute("aria-label",t.name+" tier");
+  wireLane(lane);lanes[t.key]={lane,count:ct};
+  row.append(lab,lane);tiersEl.append(row);
+}
+wireLane(poolEl);
+const cards=Object.fromEntries(IDS.map(id=>[id,makeCard(id)]));
+
+function render(){
+  let ranked=0;
+  for(const t of TIERS){
+    const {lane,count}=lanes[t.key];
+    const list=state[t.key];ranked+=list.length;
+    lane.replaceChildren(...list.map(id=>cards[id]));
+    if(!list.length){const e=document.createElement("span");e.className="empty";e.textContent="Drop here";lane.append(e)}
+    count.textContent=list.length;
+  }
+  const placed=new Set(TIERS.flatMap(t=>state[t.key]));
+  const pool=IDS.filter(id=>!placed.has(id)).map(id=>cards[id]);
+  poolEl.replaceChildren(...pool);
+  if(!pool.length){const e=document.createElement("span");e.className="empty";e.textContent="All "+N+" ranked. Tell Claude you're done.";poolEl.append(e)}
+  $("poolCount").textContent="("+pool.length+")";
+  $("progress").replaceChildren(Object.assign(document.createElement("b"),{textContent:ranked})," / "+N+" ranked");
+  if(!$("insp").hidden)fillInsp();
+}
+
+function place(id,tier,before){
+  for(const t of TIERS)state[t.key]=state[t.key].filter(x=>x!==id);
+  if(tier&&tier!=="pool"){
+    const arr=state[tier];const i=before?arr.indexOf(before):-1;
+    if(i>=0)arr.splice(i,0,id);else arr.push(id);
+  }
+  render();save();
+}
+
+let cur=IDS[0];
+const tierBtns=$("tierBtns");
+TIERS.forEach((t,i)=>{
+  const b=document.createElement("button");b.type="button";b.dataset.tier=t.key;b.style.background=t.color;
+  const s=document.createElement("span");s.textContent=t.name;const k=document.createElement("kbd");k.textContent=i+1;
+  b.append(s,k);b.addEventListener("click",()=>rankCurrent(t.key));tierBtns.append(b);
+});
+const step=(id,d)=>IDS[(BY[id].n-1+d+N)%N];
+function nextUnranked(from){for(let k=1;k<=N;k++){const id=step(from,k);if(!tierOf(id))return id}return null}
+function openInsp(id){cur=id;$("insp").hidden=false;fillInsp();$("inspClose").focus()}
+function closeInsp(){$("insp").hidden=true;cards[cur]&&cards[cur].focus()}
+function fillInsp(){
+  const it=BY[cur];
+  $("inspImg").src=it.img;$("inspImg").alt=it.name;
+  $("inspNum").textContent="#"+it.n+" of "+N+(it.rarity?" · in game now: "+it.rarity:"");
+  $("inspName").textContent=it.name;
+  const t=tierOf(cur);const tt=TIERS.find(x=>x.key===t);
+  $("inspCur").textContent=tt?"Ranked "+tt.name:"Not ranked yet";
+  for(const b of tierBtns.children)b.classList.toggle("on",b.dataset.tier===t);
+  $("unrankBtn").disabled=!t;
+  const pre=new Image();pre.src=BY[step(cur,1)].img;
+}
+function rankCurrent(tier){
+  place(cur,tier,null);
+  const nx=nextUnranked(cur);
+  if(nx){cur=nx;fillInsp()}else{fillInsp();statusEl.textContent="Everything has a tier."}
+}
+$("inspClose").onclick=closeInsp;
+$("prevBtn").onclick=()=>{cur=step(cur,-1);fillInsp()};
+$("nextBtn").onclick=()=>{cur=step(cur,1);fillInsp()};
+$("skipBtn").onclick=()=>{const nx=nextUnranked(cur);if(nx){cur=nx;fillInsp()}};
+$("unrankBtn").onclick=()=>place(cur,"pool");
+$("insp").addEventListener("click",e=>{if(e.target.id==="insp")closeInsp()});
+document.addEventListener("keydown",e=>{
+  if($("insp").hidden)return;
+  if(e.key==="Escape")closeInsp();
+  else if(e.key==="ArrowRight")$("nextBtn").click();
+  else if(e.key==="ArrowLeft")$("prevBtn").click();
+  else if(/^[1-6]$/.test(e.key))rankCurrent(TIERS[Number(e.key)-1].key);
+  else if(e.key==="0"||e.key==="Backspace")place(cur,"pool");
+});
+$("startBtn").onclick=()=>openInsp(nextUnranked(IDS[N-1])||IDS[0]);
+
+function rankingText(){
+  const lines=[];
+  for(const t of TIERS){lines.push(t.name.toUpperCase()+" ("+state[t.key].length+")");for(const id of state[t.key])lines.push("  "+BY[id].name)}
+  const placed=new Set(TIERS.flatMap(t=>state[t.key]));const un=IDS.filter(id=>!placed.has(id));
+  if(un.length){lines.push("UNRANKED ("+un.length+")");un.forEach(id=>lines.push("  "+BY[id].name))}
+  return lines.join("\n");
+}
+$("copyBtn").onclick=async()=>{
+  const txt=rankingText();
+  try{await navigator.clipboard.writeText(txt);statusEl.textContent="Ranking copied. Paste it to Damir."}
+  catch{const ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="width:100%;height:200px";statusEl.replaceChildren("Copy this text:",ta);ta.select()}
+};
+let armTimer=null;
+$("resetBtn").onclick=()=>{
+  const b=$("resetBtn");
+  if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="Tap again to clear all";clearTimeout(armTimer);armTimer=setTimeout(()=>{b.classList.remove("armed");b.textContent="Reset"},3000);return}
+  clearTimeout(armTimer);b.classList.remove("armed");b.textContent="Reset";
+  state=emptyState();render();save();
+};
+
+/* saving: one shared db doc (everyone with the link sees the same list; Claude reads it), localStorage backup */
+const LS=KIND+"-tiers-v1";
+let docRef=null,writing=false,dirty=false,lastSent="";
+try{const s=JSON.parse(localStorage.getItem(LS)||"null");if(s)state=normalize(s)}catch{}
+render();
+function save(){
+  try{localStorage.setItem(LS,JSON.stringify(state))}catch{}
+  if(!docRef){statusEl.textContent="Saved on this device.";return}
+  dirty=true;flush();
+}
+let flushTimer=null;
+function flush(){
+  clearTimeout(flushTimer);
+  flushTimer=setTimeout(async()=>{
+    if(writing||!dirty||!docRef)return;
+    const body=JSON.stringify(state);if(body===lastSent){dirty=false;return}
+    writing=true;dirty=false;statusEl.textContent="Saving…";
+    try{await docRef.set({tiers:state,updatedAt:new Date().toISOString()});lastSent=body;statusEl.textContent="Saved. Claude can read this ranking."}
+    catch(e){statusEl.textContent="Couldn't save online ("+(e&&e.code||"error")+"). Kept on this device; use Copy ranking.";}
+    writing=false;if(dirty)flush();
+  },400);
+}
+(async()=>{
+  let db=null;try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch{}
+  if(!db){statusEl.textContent="Saved on this device. When done, press Copy ranking and send it to Damir.";return}
+  docRef=db.doc("tierlist/main");
+  const t=setTimeout(()=>{statusEl.textContent="Can't reach online save yet; changes are kept on this device."},10000);
+  let first=true;
+  docRef.onSnapshot(snap=>{
+    if(!snap.metadata||!snap.metadata.fromCache)clearTimeout(t);
+    if(snap.metadata&&snap.metadata.hasPendingWrites)return;
+    if(snap.exists){
+      const remote=normalize((snap.data()||{}).tiers);const rb=JSON.stringify(remote);
+      if(first){
+        const localCount=TIERS.reduce((a,k)=>a+state[k.key].length,0);
+        const remoteCount=TIERS.reduce((a,k)=>a+remote[k.key].length,0);
+        if(remoteCount===0&&localCount>0){first=false;dirty=true;flush();return}
+      }
+      if(rb!==JSON.stringify(state)&&!writing&&!dirty){state=remote;lastSent=rb;try{localStorage.setItem(LS,rb)}catch{};render()}
+      else lastSent=rb;
+    }else if(first&&TIERS.some(k=>state[k.key].length)){dirty=true;flush()}
+    if(first){first=false;if(!statusEl.textContent||statusEl.textContent.startsWith("Saving on"))statusEl.textContent="Connected. Your ranking saves automatically."}
+  },e=>{clearTimeout(t);docRef=null;statusEl.textContent="Online save stopped ("+(e&&e.code||"error")+"). Kept on this device; use Copy ranking."});
+})();
+</script>

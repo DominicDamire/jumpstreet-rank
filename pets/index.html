@@ -1,0 +1,320 @@
+<meta charset="utf-8">
+<title>Jump Street Pet Tiers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Same layout as Jump Street Aura Tiers: tier rows + unranked pool + full-screen one-by-one viewer.
+   Single dark look on purpose: game renders read best on near-black. */
+:root{
+  color-scheme:dark;
+  --bg:#0b0b12; --panel:#14141f; --lane:#191927; --line:#2a2a3d; --fg:#ececf4; --muted:#9a9ab3; --accent:#ffd34d;
+  --t-mythic:#ff2d6e; --t-legendary:#ffc828; --t-epic:#b955ff; --t-rare:#46a0ff; --t-uncommon:#3ccf6e; --t-common:#d2d6de;
+  --display:"Russo One","Arial Black",system-ui,sans-serif; --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 60px}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,38px);margin:0;letter-spacing:.02em;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.progress{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;padding:8px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
+.progress b{color:var(--accent)}
+button{font:inherit;font-weight:600;font-size:14px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:#1a1405;border-color:var(--accent)}
+button.danger.armed{background:#5a1020;border-color:var(--t-mythic)}
+.status{font-size:12px;color:var(--muted);min-height:1em}
+.tiers{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:112px 1fr;min-height:132px;background:var(--lane);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;color:#111;font-family:var(--display);text-align:center}
+.label .name{font-size:15px;letter-spacing:.04em;text-transform:uppercase;line-height:1.1}
+.label .count{font-family:var(--body);font-weight:700;font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}
+.lane{display:flex;flex-wrap:wrap;gap:6px;padding:6px;align-content:flex-start;min-width:0}
+.lane.over{background:rgba(255,211,77,.08);box-shadow:inset 0 0 0 2px var(--accent)}
+.empty{color:var(--muted);font-size:12px;align-self:center;padding:0 8px}
+.card{position:relative;width:104px;border-radius:8px;overflow:hidden;cursor:pointer;background:radial-gradient(circle at 50% 40%,#2b2b40,#101018);border:1px solid var(--line);flex:none}
+.card img{width:100%;aspect-ratio:1;object-fit:contain;display:block;pointer-events:none}
+.card .nm{font-size:11px;font-weight:600;padding:3px 5px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,.45)}
+.card .gr{position:absolute;right:4px;top:4px;width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.6)}
+.card.dragging{opacity:.35}
+.pool-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pool-head h2{font-family:var(--display);font-weight:400;font-size:18px;margin:0;letter-spacing:.03em}
+.pool{background:var(--panel);border:1px dashed var(--line);border-radius:10px;min-height:150px}
+.pool .card{width:128px}
+.hint{color:var(--muted);font-size:12px}
+.insp[hidden]{display:none}
+.insp{position:fixed;inset:0;z-index:20;background:rgba(5,5,10,.94);display:flex;align-items:center;justify-content:center;
+  padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.insp-box{display:grid;grid-template-columns:auto minmax(0,320px);gap:20px;align-items:center;max-width:100%;max-height:100%}
+.insp-img{position:relative;height:min(78vh,640px);aspect-ratio:1;max-width:100%;border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#2b2b40,#08080d);border:1px solid var(--line)}
+.insp-img img{width:100%;height:100%;object-fit:contain;display:block}
+.insp-side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.insp-num{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.insp-name{font-family:var(--display);font-size:28px;line-height:1.1;overflow-wrap:anywhere}
+.insp-cur{font-size:13px;color:var(--muted)}
+.tierbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tierbtns button{color:#111;border:none;font-family:var(--display);font-weight:400;letter-spacing:.04em;text-transform:uppercase;font-size:13px;padding:10px 8px;display:flex;justify-content:space-between;align-items:center}
+.tierbtns button kbd{font-family:var(--body);font-size:11px;font-weight:700;background:rgba(0,0,0,.18);border-radius:4px;padding:1px 6px}
+.tierbtns button.on{outline:3px solid #fff;outline-offset:1px}
+.nav{display:flex;gap:6px;flex-wrap:wrap}
+.nav button{flex:1}
+.close{position:absolute;top:max(12px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px))}
+@media (max-width:720px){
+  .row{grid-template-columns:76px 1fr;min-height:100px}
+  .label .name{font-size:11px}
+  .card,.pool .card{width:84px}
+  .insp-box{grid-template-columns:1fr;gap:10px;justify-items:center;overflow:auto;max-height:100%}
+  .insp-img{height:auto;width:min(100%,46vh)}
+  .insp-side{width:100%;max-width:420px}
+  .insp-name{font-size:22px}
+}
+@media (prefers-reduced-motion:no-preference){.card{transition:transform .12s}.card:hover{transform:translateY(-2px)}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Jump Street Pet Tiers</h1>
+      <div class="sub">399 pets in Studio: the 3 in the Basic Egg come first, then the two pet packs. Drag a card into a tier, or open one to see it big and rank it. The dot on a card is its rarity in the game today.</div>
+    </div>
+    <div class="bar">
+      <span class="progress" id="progress"></span>
+      <button class="primary" id="startBtn" type="button">Rank one by one</button>
+      <button id="copyBtn" type="button">Copy ranking</button>
+      <button class="danger" id="resetBtn" type="button">Reset</button>
+    </div>
+  </header>
+  <div class="status" id="status" role="status"></div>
+  <section class="tiers" id="tiers" aria-label="Tiers"></section>
+  <div class="pool-head"><h2>Unranked <span id="poolCount"></span></h2><span class="hint">Keys in the big view: 1–6 place it, ← → move, Esc closes</span></div>
+  <section class="lane pool" id="pool" data-tier="pool" aria-label="Unranked"></section>
+</div>
+
+<div class="insp" id="insp" hidden role="dialog" aria-modal="true" aria-labelledby="inspName">
+  <button class="close" id="inspClose" type="button">Close</button>
+  <div class="insp-box">
+    <div class="insp-img"><img id="inspImg" alt=""></div>
+    <div class="insp-side">
+      <div class="insp-num" id="inspNum"></div>
+      <div class="insp-name" id="inspName"></div>
+      <div class="insp-cur" id="inspCur"></div>
+      <div class="tierbtns" id="tierBtns"></div>
+      <div class="nav">
+        <button id="prevBtn" type="button">← Previous</button>
+        <button id="nextBtn" type="button">Next →</button>
+      </div>
+      <div class="nav">
+        <button id="skipBtn" type="button">Next unranked</button>
+        <button id="unrankBtn" type="button">Take out of tier</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ITEMS=[{"id": "Joelly_Star", "name": "Joelly Star", "img": "img/Joelly_Star.png", "rarity": "in Basic Egg (30% drop)"}, {"id": "Christmas_Future", "name": "Christmas Future", "img": "img/Christmas_Future.png", "rarity": "in Basic Egg (37% drop)"}, {"id": "Fall_Champion", "name": "Fall Champion", "img": "img/Fall_Champion.png", "rarity": "in Basic Egg (33% drop)"}, {"id": "The_Moon", "name": "The Moon", "img": "img/The_Moon.png", "rarity": ""}, {"id": "Mythic_The_Moon", "name": "Mythic The Moon", "img": "img/Mythic_The_Moon.png", "rarity": ""}, {"id": "Crimson_Knight", "name": "Crimson Knight", "img": "img/Crimson_Knight.png", "rarity": ""}, {"id": "Ornament_Doggy", "name": "Ornament Doggy", "img": "img/Ornament_Doggy.png", "rarity": ""}, {"id": "Xmas_Bronze_Trophy", "name": "Xmas Bronze Trophy", "img": "img/Xmas_Bronze_Trophy.png", "rarity": ""}, {"id": "Xmas_Gold_Trophy", "name": "Xmas Gold Trophy", "img": "img/Xmas_Gold_Trophy.png", "rarity": ""}, {"id": "North_Pole_Moon", "name": "North Pole Moon", "img": "img/North_Pole_Moon.png", "rarity": ""}, {"id": "King_Koi", "name": "King Koi", "img": "img/King_Koi.png", "rarity": ""}, {"id": "Royal_Santa", "name": "Royal Santa", "img": "img/Royal_Santa.png", "rarity": ""}, {"id": "Admiral", "name": "Admiral", "img": "img/Admiral.png", "rarity": ""}, {"id": "Shining_Star", "name": "Shining Star", "img": "img/Shining_Star.png", "rarity": ""}, {"id": "Demonic_Furnace", "name": "Demonic Furnace", "img": "img/Demonic_Furnace.png", "rarity": ""}, {"id": "The_Sleigh", "name": "The Sleigh", "img": "img/The_Sleigh.png", "rarity": ""}, {"id": "Crystalline_Globe", "name": "Crystalline Globe", "img": "img/Crystalline_Globe.png", "rarity": ""}, {"id": "Candy_Deer", "name": "Candy Deer", "img": "img/Candy_Deer.png", "rarity": ""}, {"id": "Candy_Dragon", "name": "Candy Dragon", "img": "img/Candy_Dragon.png", "rarity": ""}, {"id": "Candy_Fox", "name": "Candy Fox", "img": "img/Candy_Fox.png", "rarity": ""}, {"id": "Candy_Golem", "name": "Candy Golem", "img": "img/Candy_Golem.png", "rarity": ""}, {"id": "Candy_Dino", "name": "Candy Dino", "img": "img/Candy_Dino.png", "rarity": ""}, {"id": "Flying_Giftbag", "name": "Flying Giftbag", "img": "img/Flying_Giftbag.png", "rarity": ""}, {"id": "Ornament_Angel", "name": "Ornament Angel", "img": "img/Ornament_Angel.png", "rarity": ""}, {"id": "Ornament_Bunny", "name": "Ornament Bunny", "img": "img/Ornament_Bunny.png", "rarity": ""}, {"id": "Ornament_Kitty", "name": "Ornament Kitty", "img": "img/Ornament_Kitty.png", "rarity": ""}, {"id": "Flying_Peppermint", "name": "Flying Peppermint", "img": "img/Flying_Peppermint.png", "rarity": ""}, {"id": "Opened_Giftbox", "name": "Opened Giftbox", "img": "img/Opened_Giftbox.png", "rarity": ""}, {"id": "Ornament_Bear", "name": "Ornament Bear", "img": "img/Ornament_Bear.png", "rarity": ""}, {"id": "Snowpuff", "name": "Snowpuff", "img": "img/Snowpuff.png", "rarity": ""}, {"id": "Lemon_Fox", "name": "Lemon Fox", "img": "img/Lemon_Fox.png", "rarity": ""}, {"id": "Orange_Deer", "name": "Orange Deer", "img": "img/Orange_Deer.png", "rarity": ""}, {"id": "Cherry_Dino", "name": "Cherry Dino", "img": "img/Cherry_Dino.png", "rarity": ""}, {"id": "Cherry_Golem", "name": "Cherry Golem", "img": "img/Cherry_Golem.png", "rarity": ""}, {"id": "Lime_Angel", "name": "Lime Angel", "img": "img/Lime_Angel.png", "rarity": ""}, {"id": "Lime_Dragon", "name": "Lime Dragon", "img": "img/Lime_Dragon.png", "rarity": ""}, {"id": "Smiling_Orb", "name": "Smiling Orb", "img": "img/Smiling_Orb.png", "rarity": ""}, {"id": "Immortal_Pufferfish", "name": "Immortal Pufferfish", "img": "img/Immortal_Pufferfish.png", "rarity": ""}, {"id": "Christmas_Robot", "name": "Christmas Robot", "img": "img/Christmas_Robot.png", "rarity": ""}, {"id": "Goof_Bot", "name": "Goof Bot", "img": "img/Goof_Bot.png", "rarity": ""}, {"id": "Yummy_Doggy", "name": "Yummy Doggy", "img": "img/Yummy_Doggy.png", "rarity": ""}, {"id": "Mythic_Christmas_Robot", "name": "Mythic Christmas Robot", "img": "img/Mythic_Christmas_Robot.png", "rarity": ""}, {"id": "Luxurious_Lantern", "name": "Luxurious Lantern", "img": "img/Luxurious_Lantern.png", "rarity": ""}, {"id": "Unlucky_Clover", "name": "Unlucky Clover", "img": "img/Unlucky_Clover.png", "rarity": ""}, {"id": "Yummy_Bear", "name": "Yummy Bear", "img": "img/Yummy_Bear.png", "rarity": ""}, {"id": "Yummy_Bunny", "name": "Yummy Bunny", "img": "img/Yummy_Bunny.png", "rarity": ""}, {"id": "Yummy_Kitty", "name": "Yummy Kitty", "img": "img/Yummy_Kitty.png", "rarity": ""}, {"id": "Mythic_Royal_Santa", "name": "Mythic Royal Santa", "img": "img/Mythic_Royal_Santa.png", "rarity": ""}, {"id": "Bruh", "name": "Bruh", "img": "img/Bruh.png", "rarity": ""}, {"id": "Beta_TV", "name": "Beta TV", "img": "img/Beta_TV.png", "rarity": ""}, {"id": "Candy_Angel", "name": "Candy Angel", "img": "img/Candy_Angel.png", "rarity": ""}, {"id": "Electra", "name": "Electra", "img": "img/Electra.png", "rarity": ""}, {"id": "Bruh_Bandit", "name": "Bruh Bandit", "img": "img/Bruh_Bandit.png", "rarity": ""}, {"id": "Mouse", "name": "Mouse", "img": "img/Mouse.png", "rarity": ""}, {"id": "Flame_Drop", "name": "Flame Drop", "img": "img/Flame_Drop.png", "rarity": ""}, {"id": "Immortality_Stone", "name": "Immortality Stone", "img": "img/Immortality_Stone.png", "rarity": ""}, {"id": "Mythic_Enchanted_Pumpkin", "name": "Mythic Enchanted Pumpkin", "img": "img/Mythic_Enchanted_Pumpkin.png", "rarity": ""}, {"id": "Enchanted_Pumpkin", "name": "Enchanted Pumpkin", "img": "img/Enchanted_Pumpkin.png", "rarity": ""}, {"id": "Flying_Acorn", "name": "Flying Acorn", "img": "img/Flying_Acorn.png", "rarity": ""}, {"id": "Clock_Flake", "name": "Clock Flake", "img": "img/Clock_Flake.png", "rarity": ""}, {"id": "Mythic_Candy_Paladin", "name": "Mythic Candy Paladin", "img": "img/Mythic_Candy_Paladin.png", "rarity": ""}, {"id": "Candy_Paladin", "name": "Candy Paladin", "img": "img/Candy_Paladin.png", "rarity": ""}, {"id": "Gingerbread_Shard", "name": "Gingerbread Shard", "img": "img/Gingerbread_Shard.png", "rarity": ""}, {"id": "Soulfly", "name": "Soulfly", "img": "img/Soulfly.png", "rarity": ""}, {"id": "Candy_Lord", "name": "Candy Lord", "img": "img/Candy_Lord.png", "rarity": ""}, {"id": "Mythic_Soulfly", "name": "Mythic Soulfly", "img": "img/Mythic_Soulfly.png", "rarity": ""}, {"id": "Fall_Star", "name": "Fall Star", "img": "img/Fall_Star.png", "rarity": ""}, {"id": "Redemption", "name": "Redemption", "img": "img/Redemption.png", "rarity": ""}, {"id": "Leafy_Bunny", "name": "Leafy Bunny", "img": "img/Leafy_Bunny.png", "rarity": ""}, {"id": "Leafy_Dragon", "name": "Leafy Dragon", "img": "img/Leafy_Dragon.png", "rarity": ""}, {"id": "Leafy_Kitty", "name": "Leafy Kitty", "img": "img/Leafy_Kitty.png", "rarity": ""}, {"id": "Leafy_Bear", "name": "Leafy Bear", "img": "img/Leafy_Bear.png", "rarity": ""}, {"id": "Leafy_Deer", "name": "Leafy Deer", "img": "img/Leafy_Deer.png", "rarity": ""}, {"id": "Starlight_Dragon", "name": "Starlight Dragon", "img": "img/Starlight_Dragon.png", "rarity": ""}, {"id": "Fall_Triumpth", "name": "Fall Triumpth", "img": "img/Fall_Triumpth.png", "rarity": ""}, {"id": "Fall_Cloud", "name": "Fall Cloud", "img": "img/Fall_Cloud.png", "rarity": ""}, {"id": "Lunar_Serpent", "name": "Lunar Serpent", "img": "img/Lunar_Serpent.png", "rarity": ""}, {"id": "Dragon", "name": "Dragon", "img": "img/Dragon.png", "rarity": ""}, {"id": "Dino", "name": "Dino", "img": "img/Dino.png", "rarity": ""}, {"id": "Ice_Dragon", "name": "Ice Dragon", "img": "img/Ice_Dragon.png", "rarity": ""}, {"id": "Frost_Deer", "name": "Frost Deer", "img": "img/Frost_Deer.png", "rarity": ""}, {"id": "Piggy", "name": "Piggy", "img": "img/Piggy.png", "rarity": ""}, {"id": "Frost_Wolf", "name": "Frost Wolf", "img": "img/Frost_Wolf.png", "rarity": ""}, {"id": "Deer", "name": "Deer", "img": "img/Deer.png", "rarity": ""}, {"id": "Frost_Kitty", "name": "Frost Kitty", "img": "img/Frost_Kitty.png", "rarity": ""}, {"id": "Panda", "name": "Panda", "img": "img/Panda.png", "rarity": ""}, {"id": "Flying_Wreath", "name": "Flying Wreath", "img": "img/Flying_Wreath.png", "rarity": ""}, {"id": "Frost_Dragon", "name": "Frost Dragon", "img": "img/Frost_Dragon.png", "rarity": ""}, {"id": "Inferno_Dragon", "name": "Inferno Dragon", "img": "img/Inferno_Dragon.png", "rarity": ""}, {"id": "Ruby_Dragon", "name": "Ruby Dragon", "img": "img/Ruby_Dragon.png", "rarity": ""}, {"id": "Flying_Pig", "name": "Flying Pig", "img": "img/Flying_Pig.png", "rarity": ""}, {"id": "Duke", "name": "Duke", "img": "img/Duke.png", "rarity": ""}, {"id": "Rainbow_Shock", "name": "Rainbow Shock", "img": "img/Rainbow_Shock.png", "rarity": ""}, {"id": "Hexarium", "name": "Hexarium", "img": "img/Hexarium.png", "rarity": ""}, {"id": "King_Kitty", "name": "King Kitty", "img": "img/King_Kitty.png", "rarity": ""}, {"id": "Grinch", "name": "Grinch", "img": "img/Grinch.png", "rarity": ""}, {"id": "Fall_Queen", "name": "Fall Queen", "img": "img/Fall_Queen.png", "rarity": ""}, {"id": "Dark_Phoenix", "name": "Dark Phoenix", "img": "img/Dark_Phoenix.png", "rarity": ""}, {"id": "Void_Kitty", "name": "Void Kitty", "img": "img/Void_Kitty.png", "rarity": ""}, {"id": "Void_Demon", "name": "Void Demon", "img": "img/Void_Demon.png", "rarity": ""}, {"id": "Void_Dragon", "name": "Void Dragon", "img": "img/Void_Dragon.png", "rarity": ""}, {"id": "Void_Bat", "name": "Void Bat", "img": "img/Void_Bat.png", "rarity": ""}, {"id": "Void_Bear", "name": "Void Bear", "img": "img/Void_Bear.png", "rarity": ""}, {"id": "Void_Fox", "name": "Void Fox", "img": "img/Void_Fox.png", "rarity": ""}, {"id": "Guardian_Knight", "name": "Guardian Knight", "img": "img/Guardian_Knight.png", "rarity": ""}, {"id": "Caramel_Demise", "name": "Caramel Demise", "img": "img/Caramel_Demise.png", "rarity": ""}, {"id": "Void_Deer", "name": "Void Deer", "img": "img/Void_Deer.png", "rarity": ""}, {"id": "Polar_Bear", "name": "Polar Bear", "img": "img/Polar_Bear.png", "rarity": ""}, {"id": "Fox", "name": "Fox", "img": "img/Fox.png", "rarity": ""}, {"id": "Yummy_Crawler", "name": "Yummy Crawler", "img": "img/Yummy_Crawler.png", "rarity": ""}, {"id": "Baron_Bunny", "name": "Baron Bunny", "img": "img/Baron_Bunny.png", "rarity": ""}, {"id": "Castle_Deer", "name": "Castle Deer", "img": "img/Castle_Deer.png", "rarity": ""}, {"id": "Castle_Dragon", "name": "Castle Dragon", "img": "img/Castle_Dragon.png", "rarity": ""}, {"id": "Castle_Orb", "name": "Castle Orb", "img": "img/Castle_Orb.png", "rarity": ""}, {"id": "Throne_Guard", "name": "Throne Guard", "img": "img/Throne_Guard.png", "rarity": ""}, {"id": "Mythic_Fall_Queen", "name": "Mythic Fall Queen", "img": "img/Mythic_Fall_Queen.png", "rarity": ""}, {"id": "Mythic_Baron_Bunny", "name": "Mythic Baron Bunny", "img": "img/Mythic_Baron_Bunny.png", "rarity": ""}, {"id": "Castle_Bear", "name": "Castle Bear", "img": "img/Castle_Bear.png", "rarity": ""}, {"id": "Fallen_Leaf", "name": "Fallen Leaf", "img": "img/Fallen_Leaf.png", "rarity": ""}, {"id": "Radium", "name": "Radium", "img": "img/Radium.png", "rarity": ""}, {"id": "Overlord", "name": "Overlord", "img": "img/Overlord.png", "rarity": ""}, {"id": "Unicorn", "name": "Unicorn", "img": "img/Unicorn.png", "rarity": ""}, {"id": "Glacier_Lord", "name": "Glacier Lord", "img": "img/Glacier_Lord.png", "rarity": ""}, {"id": "King_Bruh", "name": "King Bruh", "img": "img/King_Bruh.png", "rarity": ""}, {"id": "Release_Robot", "name": "Release Robot", "img": "img/Release_Robot.png", "rarity": ""}, {"id": "Pumpkin_Bat", "name": "Pumpkin Bat", "img": "img/Pumpkin_Bat.png", "rarity": ""}, {"id": "Pumpkin_Kitty", "name": "Pumpkin Kitty", "img": "img/Pumpkin_Kitty.png", "rarity": ""}, {"id": "Pumpkin_Mouse", "name": "Pumpkin Mouse", "img": "img/Pumpkin_Mouse.png", "rarity": ""}, {"id": "Pumpkin_Doggy", "name": "Pumpkin Doggy", "img": "img/Pumpkin_Doggy.png", "rarity": ""}, {"id": "Fall_Pyromidium", "name": "Fall Pyromidium", "img": "img/Fall_Pyromidium.png", "rarity": ""}, {"id": "Koi", "name": "Koi", "img": "img/Koi.png", "rarity": ""}, {"id": "Mythic_Immortality_Stone", "name": "Mythic Immortality Stone", "img": "img/Mythic_Immortality_Stone.png", "rarity": ""}, {"id": "Inky_Guardian", "name": "Inky Guardian", "img": "img/Inky_Guardian.png", "rarity": ""}, {"id": "Giant_Fall_Turkey", "name": "Giant Fall Turkey", "img": "img/Giant_Fall_Turkey.png", "rarity": ""}, {"id": "Puppet_Dragon", "name": "Puppet Dragon", "img": "img/Puppet_Dragon.png", "rarity": ""}, {"id": "Bubble_Blowing_Alien", "name": "Bubble Blowing Alien", "img": "img/Bubble_Blowing_Alien.png", "rarity": ""}, {"id": "Old_Dolly", "name": "Old Dolly", "img": "img/Old_Dolly.png", "rarity": ""}, {"id": "Stuffed_Paragon", "name": "Stuffed Paragon", "img": "img/Stuffed_Paragon.png", "rarity": ""}, {"id": "King_Doggy", "name": "King Doggy", "img": "img/King_Doggy.png", "rarity": ""}, {"id": "Holy_Leaf", "name": "Holy Leaf", "img": "img/Holy_Leaf.png", "rarity": ""}, {"id": "Celestial_Wisp", "name": "Celestial Wisp", "img": "img/Celestial_Wisp.png", "rarity": ""}, {"id": "Dark_Dragon", "name": "Dark Dragon", "img": "img/Dark_Dragon.png", "rarity": ""}, {"id": "Bronze_Trophy", "name": "Bronze Trophy", "img": "img/Bronze_Trophy.png", "rarity": ""}, {"id": "Lavender_Dominator", "name": "Lavender Dominator", "img": "img/Lavender_Dominator.png", "rarity": ""}, {"id": "Release_Orb", "name": "Release Orb", "img": "img/Release_Orb.png", "rarity": ""}, {"id": "Elite_Challenger", "name": "Elite Challenger", "img": "img/Elite_Challenger.png", "rarity": ""}, {"id": "Mythic_Cartoon_Hexarium", "name": "Mythic Cartoon Hexarium", "img": "img/Mythic_Cartoon_Hexarium.png", "rarity": ""}, {"id": "Mythic_Crystal_Teddy", "name": "Mythic Crystal Teddy", "img": "img/Mythic_Crystal_Teddy.png", "rarity": ""}, {"id": "Mythic_Sinister_Shard", "name": "Mythic Sinister Shard", "img": "img/Mythic_Sinister_Shard.png", "rarity": ""}, {"id": "King_Slime", "name": "King Slime", "img": "img/King_Slime.png", "rarity": ""}, {"id": "Mythic_Equinox", "name": "Mythic Equinox", "img": "img/Mythic_Equinox.png", "rarity": ""}, {"id": "Pyramidium", "name": "Pyramidium", "img": "img/Pyramidium.png", "rarity": ""}, {"id": "Immortal_One", "name": "Immortal One", "img": "img/Immortal_One.png", "rarity": ""}, {"id": "Sinister_Lord", "name": "Sinister Lord", "img": "img/Sinister_Lord.png", "rarity": ""}, {"id": "Mythic_Demon_Tree", "name": "Mythic Demon Tree", "img": "img/Mythic_Demon_Tree.png", "rarity": ""}, {"id": "Mythic_Angelic_Spirit", "name": "Mythic Angelic Spirit", "img": "img/Mythic_Angelic_Spirit.png", "rarity": ""}, {"id": "Mythic_800M_Butterfly", "name": "Mythic 800M Butterfly", "img": "img/Mythic_800M_Butterfly.png", "rarity": ""}, {"id": "Guardian_Skull", "name": "Guardian Skull", "img": "img/Guardian_Skull.png", "rarity": ""}, {"id": "Mythic_Guardian_Skull", "name": "Mythic Guardian Skull", "img": "img/Mythic_Guardian_Skull.png", "rarity": ""}, {"id": "Vanilla_Sundae_Champion", "name": "Vanilla Sundae Champion", "img": "img/Vanilla_Sundae_Champion.png", "rarity": ""}, {"id": "Mythic_Sinister_Lord_2_0", "name": "Mythic Sinister Lord 2.0", "img": "img/Mythic_Sinister_Lord_2_0.png", "rarity": ""}, {"id": "Mythic_Stuffed_Imp", "name": "Mythic Stuffed Imp", "img": "img/Mythic_Stuffed_Imp.png", "rarity": ""}, {"id": "Wolf_Skull", "name": "Wolf Skull", "img": "img/Wolf_Skull.png", "rarity": ""}, {"id": "Mythic_Shadow_Hunter", "name": "Mythic Shadow Hunter", "img": "img/Mythic_Shadow_Hunter.png", "rarity": ""}, {"id": "Mythic_Sinister_Skull", "name": "Mythic Sinister Skull", "img": "img/Mythic_Sinister_Skull.png", "rarity": ""}, {"id": "Autumn_Spirit", "name": "Autumn Spirit", "img": "img/Autumn_Spirit.png", "rarity": ""}, {"id": "Mythic_Gem_Shock", "name": "Mythic Gem Shock", "img": "img/Mythic_Gem_Shock.png", "rarity": ""}, {"id": "BGS_Plaque", "name": "BGS Plaque", "img": "img/BGS_Plaque.png", "rarity": ""}, {"id": "Sinister_Lord_2_0", "name": "Sinister Lord 2.0", "img": "img/Sinister_Lord_2_0.png", "rarity": ""}, {"id": "Lemonade_Master", "name": "Lemonade Master", "img": "img/Lemonade_Master.png", "rarity": ""}, {"id": "Shadow_Hunter", "name": "Shadow Hunter", "img": "img/Shadow_Hunter.png", "rarity": ""}, {"id": "Mythic_Ocelot", "name": "Mythic Ocelot", "img": "img/Mythic_Ocelot.png", "rarity": ""}, {"id": "Catmouse", "name": "Catmouse", "img": "img/Catmouse.png", "rarity": ""}, {"id": "Mythic_Slime_Overlord", "name": "Mythic Slime Overlord", "img": "img/Mythic_Slime_Overlord.png", "rarity": ""}, {"id": "Fire_Basilisk", "name": "Fire Basilisk", "img": "img/Fire_Basilisk.png", "rarity": ""}, {"id": "Mythic_Autumn_Dragon", "name": "Mythic Autumn Dragon", "img": "img/Mythic_Autumn_Dragon.png", "rarity": ""}, {"id": "Tophat__F_", "name": "Tophat (F)", "img": "img/Tophat__F_.png", "rarity": ""}, {"id": "Plasma_Wolflord", "name": "Plasma Wolflord", "img": "img/Plasma_Wolflord.png", "rarity": ""}, {"id": "Eclipse", "name": "Eclipse", "img": "img/Eclipse.png", "rarity": ""}, {"id": "Electra_Hydra", "name": "Electra Hydra", "img": "img/Electra_Hydra.png", "rarity": ""}, {"id": "Trick_O__Emperor", "name": "Trick O' Emperor", "img": "img/Trick_O__Emperor.png", "rarity": ""}, {"id": "Ultimate_Clover", "name": "Ultimate Clover", "img": "img/Ultimate_Clover.png", "rarity": ""}, {"id": "Crimson_Eye", "name": "Crimson Eye", "img": "img/Crimson_Eye.png", "rarity": ""}, {"id": "Crystal_Teddy", "name": "Crystal Teddy", "img": "img/Crystal_Teddy.png", "rarity": ""}, {"id": "Electric_Basilisk", "name": "Electric Basilisk", "img": "img/Electric_Basilisk.png", "rarity": ""}, {"id": "Rainbow_Gryphon", "name": "Rainbow Gryphon", "img": "img/Rainbow_Gryphon.png", "rarity": ""}, {"id": "Mythic_Zebra", "name": "Mythic Zebra", "img": "img/Mythic_Zebra.png", "rarity": ""}, {"id": "Mythic_Eternal_Cucumber", "name": "Mythic Eternal Cucumber", "img": "img/Mythic_Eternal_Cucumber.png", "rarity": ""}, {"id": "LOL", "name": "LOL", "img": "img/LOL.png", "rarity": ""}, {"id": "Godly_Gem", "name": "Godly Gem", "img": "img/Godly_Gem.png", "rarity": ""}, {"id": "Mythic_Shard", "name": "Mythic Shard", "img": "img/Mythic_Shard.png", "rarity": ""}, {"id": "Mythic_Radiant_One", "name": "Mythic Radiant One", "img": "img/Mythic_Radiant_One.png", "rarity": ""}, {"id": "Queen_Kitty", "name": "Queen Kitty", "img": "img/Queen_Kitty.png", "rarity": ""}, {"id": "Elephant_Plushie", "name": "Elephant Plushie", "img": "img/Elephant_Plushie.png", "rarity": ""}, {"id": "Mythic_Shadow_Raven", "name": "Mythic Shadow Raven", "img": "img/Mythic_Shadow_Raven.png", "rarity": ""}, {"id": "Crimson_Bell", "name": "Crimson Bell", "img": "img/Crimson_Bell.png", "rarity": ""}, {"id": "Slime_Cube", "name": "Slime Cube", "img": "img/Slime_Cube.png", "rarity": ""}, {"id": "Witches_Pot", "name": "Witches Pot", "img": "img/Witches_Pot.png", "rarity": ""}, {"id": "Elite_Wolflord", "name": "Elite Wolflord", "img": "img/Elite_Wolflord.png", "rarity": ""}, {"id": "Elite_Fallen_Angel", "name": "Elite Fallen Angel", "img": "img/Elite_Fallen_Angel.png", "rarity": ""}, {"id": "Mythic_BGS_Plaque", "name": "Mythic BGS Plaque", "img": "img/Mythic_BGS_Plaque.png", "rarity": ""}, {"id": "Cartoon_Hexarium", "name": "Cartoon Hexarium", "img": "img/Cartoon_Hexarium.png", "rarity": ""}, {"id": "Mythic_Advocate", "name": "Mythic Advocate", "img": "img/Mythic_Advocate.png", "rarity": ""}, {"id": "Angelic_Ghost_Spirit", "name": "Angelic Ghost Spirit", "img": "img/Angelic_Ghost_Spirit.png", "rarity": ""}, {"id": "Demonic_Ghost_Spirit", "name": "Demonic Ghost Spirit", "img": "img/Demonic_Ghost_Spirit.png", "rarity": ""}, {"id": "Mythic_Angelic_Ghost_Spirit", "name": "Mythic Angelic Ghost Spirit", "img": "img/Mythic_Angelic_Ghost_Spirit.png", "rarity": ""}, {"id": "Mythic_Demonic_Ghost_Spirit", "name": "Mythic Demonic Ghost Spirit", "img": "img/Mythic_Demonic_Ghost_Spirit.png", "rarity": ""}, {"id": "Mythic_900M_Split", "name": "Mythic 900M Split", "img": "img/Mythic_900M_Split.png", "rarity": ""}, {"id": "900M_Split", "name": "900M Split", "img": "img/900M_Split.png", "rarity": ""}, {"id": "Advocate", "name": "Advocate", "img": "img/Advocate.png", "rarity": ""}, {"id": "Eternal_Cucumber", "name": "Eternal Cucumber", "img": "img/Eternal_Cucumber.png", "rarity": ""}, {"id": "Dragonfruit", "name": "Dragonfruit", "img": "img/Dragonfruit.png", "rarity": ""}, {"id": "Phantom", "name": "Phantom", "img": "img/Phantom.png", "rarity": ""}, {"id": "Equinox", "name": "Equinox", "img": "img/Equinox.png", "rarity": ""}, {"id": "Mythic_Witches_Pot", "name": "Mythic Witches Pot", "img": "img/Mythic_Witches_Pot.png", "rarity": ""}, {"id": "Crimson_Demon", "name": "Crimson Demon", "img": "img/Crimson_Demon.png", "rarity": ""}, {"id": "Rainbow_Phoenix", "name": "Rainbow Phoenix", "img": "img/Rainbow_Phoenix.png", "rarity": ""}, {"id": "Mythic_Pyramidium", "name": "Mythic Pyramidium", "img": "img/Mythic_Pyramidium.png", "rarity": ""}, {"id": "Dark_Guardian", "name": "Dark Guardian", "img": "img/Dark_Guardian.png", "rarity": ""}, {"id": "Radiance", "name": "Radiance", "img": "img/Radiance.png", "rarity": ""}, {"id": "Crystal_Acorn", "name": "Crystal Acorn", "img": "img/Crystal_Acorn.png", "rarity": ""}, {"id": "Mythic_Crystal_Acorn", "name": "Mythic Crystal Acorn", "img": "img/Mythic_Crystal_Acorn.png", "rarity": ""}, {"id": "Demon_Tree", "name": "Demon Tree", "img": "img/Demon_Tree.png", "rarity": ""}, {"id": "Mythic_Lucid_Leaf", "name": "Mythic Lucid Leaf", "img": "img/Mythic_Lucid_Leaf.png", "rarity": ""}, {"id": "Lucid_Leaf", "name": "Lucid Leaf", "img": "img/Lucid_Leaf.png", "rarity": ""}, {"id": "Mythic_Trickster", "name": "Mythic Trickster", "img": "img/Mythic_Trickster.png", "rarity": ""}, {"id": "Mythic_Ghostlord", "name": "Mythic Ghostlord", "img": "img/Mythic_Ghostlord.png", "rarity": ""}, {"id": "Mythic_Skull_Reaper", "name": "Mythic Skull Reaper", "img": "img/Mythic_Skull_Reaper.png", "rarity": ""}, {"id": "Skull_Reaper", "name": "Skull Reaper", "img": "img/Skull_Reaper.png", "rarity": ""}, {"id": "Luminance", "name": "Luminance", "img": "img/Luminance.png", "rarity": ""}, {"id": "Mythic_Luminance", "name": "Mythic Luminance", "img": "img/Mythic_Luminance.png", "rarity": ""}, {"id": "Ghostlord", "name": "Ghostlord", "img": "img/Ghostlord.png", "rarity": ""}, {"id": "Trickster", "name": "Trickster", "img": "img/Trickster.png", "rarity": ""}, {"id": "Angelic_Spirit", "name": "Angelic Spirit", "img": "img/Angelic_Spirit.png", "rarity": ""}, {"id": "Gem_Overlord", "name": "Gem Overlord", "img": "img/Gem_Overlord.png", "rarity": ""}, {"id": "Sinister_Shard", "name": "Sinister Shard", "img": "img/Sinister_Shard.png", "rarity": ""}, {"id": "Mythic_Angelic_Skull", "name": "Mythic Angelic Skull", "img": "img/Mythic_Angelic_Skull.png", "rarity": ""}, {"id": "Shard", "name": "Shard", "img": "img/Shard.png", "rarity": ""}, {"id": "Magic_Marshmallow", "name": "Magic Marshmallow", "img": "img/Magic_Marshmallow.png", "rarity": ""}, {"id": "Mythic_Candycorn_Shard", "name": "Mythic Candycorn Shard", "img": "img/Mythic_Candycorn_Shard.png", "rarity": ""}, {"id": "800M_Butterfly", "name": "800M Butterfly", "img": "img/800M_Butterfly.png", "rarity": ""}, {"id": "Rabbit_Plushie", "name": "Rabbit Plushie", "img": "img/Rabbit_Plushie.png", "rarity": ""}, {"id": "King_Skull", "name": "King Skull", "img": "img/King_Skull.png", "rarity": ""}, {"id": "Chocolate_Sundae_Champion", "name": "Chocolate Sundae Champion", "img": "img/Chocolate_Sundae_Champion.png", "rarity": ""}, {"id": "Mint_Sundae_Champion", "name": "Mint Sundae Champion", "img": "img/Mint_Sundae_Champion.png", "rarity": ""}, {"id": "Mythic_Chocolate_Sundae_Champion", "name": "Mythic Chocolate Sundae Champion", "img": "img/Mythic_Chocolate_Sundae_Champion.png", "rarity": ""}, {"id": "Mythic_Mint_Sundae_Champion", "name": "Mythic Mint Sundae Champion", "img": "img/Mythic_Mint_Sundae_Champion.png", "rarity": ""}, {"id": "Mythic_Strawberry_Sundae_Champion", "name": "Mythic Strawberry Sundae Champion", "img": "img/Mythic_Strawberry_Sundae_Champion.png", "rarity": ""}, {"id": "Mythic_Vanilla_Sundae_Champion", "name": "Mythic Vanilla Sundae Champion", "img": "img/Mythic_Vanilla_Sundae_Champion.png", "rarity": ""}, {"id": "Strawberry_Sundae_Champion", "name": "Strawberry Sundae Champion", "img": "img/Strawberry_Sundae_Champion.png", "rarity": ""}, {"id": "Unicorn_Plushie", "name": "Unicorn Plushie", "img": "img/Unicorn_Plushie.png", "rarity": ""}, {"id": "Dragon_Plushie", "name": "Dragon Plushie", "img": "img/Dragon_Plushie.png", "rarity": ""}, {"id": "Mythic_Crimson_Eye", "name": "Mythic Crimson Eye", "img": "img/Mythic_Crimson_Eye.png", "rarity": ""}, {"id": "Overlord_Plushie", "name": "Overlord Plushie", "img": "img/Overlord_Plushie.png", "rarity": ""}, {"id": "Mythic_Axolotl_Plushie", "name": "Mythic Axolotl Plushie", "img": "img/Mythic_Axolotl_Plushie.png", "rarity": ""}, {"id": "Mythic_Overlord_Plushie", "name": "Mythic Overlord Plushie", "img": "img/Mythic_Overlord_Plushie.png", "rarity": ""}, {"id": "Mythic_Prismatic_Paragon", "name": "Mythic Prismatic Paragon", "img": "img/Mythic_Prismatic_Paragon.png", "rarity": ""}, {"id": "Prismatic_Paragon", "name": "Prismatic Paragon", "img": "img/Prismatic_Paragon.png", "rarity": ""}, {"id": "Axolotl_Plushie", "name": "Axolotl Plushie", "img": "img/Axolotl_Plushie.png", "rarity": ""}, {"id": "Stuffed_Imp", "name": "Stuffed Imp", "img": "img/Stuffed_Imp.png", "rarity": ""}, {"id": "Element_Hydra", "name": "Element Hydra", "img": "img/Element_Hydra.png", "rarity": ""}, {"id": "Shadow_Raven", "name": "Shadow Raven", "img": "img/Shadow_Raven.png", "rarity": ""}, {"id": "Sinister_Skull", "name": "Sinister Skull", "img": "img/Sinister_Skull.png", "rarity": ""}, {"id": "Mythic_Galactic_Paladin", "name": "Mythic Galactic Paladin", "img": "img/Mythic_Galactic_Paladin.png", "rarity": ""}, {"id": "Clown_Emoji", "name": "Clown Emoji", "img": "img/Clown_Emoji.png", "rarity": ""}, {"id": "Ocelot", "name": "Ocelot", "img": "img/Ocelot.png", "rarity": ""}, {"id": "Mythic_Element_Hydra", "name": "Mythic Element Hydra", "img": "img/Mythic_Element_Hydra.png", "rarity": ""}, {"id": "Giant_Fall_Turkey_2", "name": "Giant Fall Turkey", "img": "img/Giant_Fall_Turkey_2.png", "rarity": ""}, {"id": "Mythic_Gem_Overlord", "name": "Mythic Gem Overlord", "img": "img/Mythic_Gem_Overlord.png", "rarity": ""}, {"id": "Mythic_King_Skull", "name": "Mythic King Skull", "img": "img/Mythic_King_Skull.png", "rarity": ""}, {"id": "Mythic_Wolf_Skull", "name": "Mythic Wolf Skull", "img": "img/Mythic_Wolf_Skull.png", "rarity": ""}, {"id": "Light_Phoenix", "name": "Light Phoenix", "img": "img/Light_Phoenix.png", "rarity": ""}, {"id": "Galactic_Paladin", "name": "Galactic Paladin", "img": "img/Galactic_Paladin.png", "rarity": ""}, {"id": "Mythic_Light_Phoenix", "name": "Mythic Light Phoenix", "img": "img/Mythic_Light_Phoenix.png", "rarity": ""}, {"id": "Zebra", "name": "Zebra", "img": "img/Zebra.png", "rarity": ""}, {"id": "Mythic_Lemonade_Master", "name": "Mythic Lemonade Master", "img": "img/Mythic_Lemonade_Master.png", "rarity": ""}, {"id": "Sandcastle_Dragon", "name": "Sandcastle Dragon", "img": "img/Sandcastle_Dragon.png", "rarity": ""}, {"id": "BGS_Bucket", "name": "BGS Bucket", "img": "img/BGS_Bucket.png", "rarity": ""}, {"id": "Mythic_BGS_Bucket", "name": "Mythic BGS Bucket", "img": "img/Mythic_BGS_Bucket.png", "rarity": ""}, {"id": "Mythic_Sandcastle_Dragon", "name": "Mythic Sandcastle Dragon", "img": "img/Mythic_Sandcastle_Dragon.png", "rarity": ""}, {"id": "Radiant_One", "name": "Radiant One", "img": "img/Radiant_One.png", "rarity": ""}, {"id": "Gem_Shock", "name": "Gem Shock", "img": "img/Gem_Shock.png", "rarity": ""}, {"id": "Rainbow_Bunny", "name": "Rainbow Bunny", "img": "img/Rainbow_Bunny.png", "rarity": ""}, {"id": "King_Snowman", "name": "King Snowman", "img": "img/King_Snowman.png", "rarity": ""}, {"id": "Mythic_Vectorlord", "name": "Mythic Vectorlord", "img": "img/Mythic_Vectorlord.png", "rarity": ""}, {"id": "Shade_Demon", "name": "Shade Demon", "img": "img/Shade_Demon.png", "rarity": ""}, {"id": "Sakuralord", "name": "Sakuralord", "img": "img/Sakuralord.png", "rarity": ""}, {"id": "Super_Hexarium", "name": "Super Hexarium", "img": "img/Super_Hexarium.png", "rarity": ""}, {"id": "Pufferfish", "name": "Pufferfish", "img": "img/Pufferfish.png", "rarity": ""}, {"id": "Mythic_Flower_Queen", "name": "Mythic Flower Queen", "img": "img/Mythic_Flower_Queen.png", "rarity": ""}, {"id": "Mythic_Soul_Flower", "name": "Mythic Soul Flower", "img": "img/Mythic_Soul_Flower.png", "rarity": ""}, {"id": "Light_Demon", "name": "Light Demon", "img": "img/Light_Demon.png", "rarity": ""}, {"id": "Toxic_Terror", "name": "Toxic Terror", "img": "img/Toxic_Terror.png", "rarity": ""}, {"id": "Soul_Flower", "name": "Soul Flower", "img": "img/Soul_Flower.png", "rarity": ""}, {"id": "Mythic_Blossom_Protector", "name": "Mythic Blossom Protector", "img": "img/Mythic_Blossom_Protector.png", "rarity": ""}, {"id": "Sky_Imp", "name": "Sky Imp", "img": "img/Sky_Imp.png", "rarity": ""}, {"id": "Spring_Dragon", "name": "Spring Dragon", "img": "img/Spring_Dragon.png", "rarity": ""}, {"id": "Spring_Spirit", "name": "Spring Spirit", "img": "img/Spring_Spirit.png", "rarity": ""}, {"id": "Mythic_Sky_Imp", "name": "Mythic Sky Imp", "img": "img/Mythic_Sky_Imp.png", "rarity": ""}, {"id": "Mythic_Sakuralord", "name": "Mythic Sakuralord", "img": "img/Mythic_Sakuralord.png", "rarity": ""}, {"id": "Mythic_Haunt", "name": "Mythic Haunt", "img": "img/Mythic_Haunt.png", "rarity": ""}, {"id": "Mythic_Paragon", "name": "Mythic Paragon", "img": "img/Mythic_Paragon.png", "rarity": ""}, {"id": "Cursed_Scorpio", "name": "Cursed Scorpio", "img": "img/Cursed_Scorpio.png", "rarity": ""}, {"id": "Mythic_Cursed_Scorpio", "name": "Mythic Cursed Scorpio", "img": "img/Mythic_Cursed_Scorpio.png", "rarity": ""}, {"id": "The_Keeper", "name": "The Keeper", "img": "img/The_Keeper.png", "rarity": ""}, {"id": "Guardian_Angel", "name": "Guardian Angel", "img": "img/Guardian_Angel.png", "rarity": ""}, {"id": "Glitch", "name": "Glitch", "img": "img/Glitch.png", "rarity": ""}, {"id": "Midas", "name": "Midas", "img": "img/Midas.png", "rarity": ""}, {"id": "Yin_Yang", "name": "Yin Yang", "img": "img/Yin_Yang.png", "rarity": ""}, {"id": "Demilord", "name": "Demilord", "img": "img/Demilord.png", "rarity": ""}, {"id": "Guardian_Angel_2", "name": "Guardian Angel", "img": "img/Guardian_Angel_2.png", "rarity": ""}, {"id": "Easter_Guardian", "name": "Easter Guardian", "img": "img/Easter_Guardian.png", "rarity": ""}, {"id": "Galactic_Bunny", "name": "Galactic Bunny", "img": "img/Galactic_Bunny.png", "rarity": ""}, {"id": "Phantom_2", "name": "Phantom", "img": "img/Phantom_2.png", "rarity": ""}, {"id": "Dark_Lord", "name": "Dark Lord", "img": "img/Dark_Lord.png", "rarity": ""}, {"id": "Easter_Overlord", "name": "Easter Overlord", "img": "img/Easter_Overlord.png", "rarity": ""}, {"id": "Prisma", "name": "Prisma", "img": "img/Prisma.png", "rarity": ""}, {"id": "Dark_Radiance", "name": "Dark Radiance", "img": "img/Dark_Radiance.png", "rarity": ""}, {"id": "Paragon", "name": "Paragon", "img": "img/Paragon.png", "rarity": ""}, {"id": "Mythic_Glitch", "name": "Mythic Glitch", "img": "img/Mythic_Glitch.png", "rarity": ""}, {"id": "Angler_Fish", "name": "Angler Fish", "img": "img/Angler_Fish.png", "rarity": ""}, {"id": "Circus_Stack", "name": "Circus Stack", "img": "img/Circus_Stack.png", "rarity": ""}, {"id": "King_Pufferfish", "name": "King Pufferfish", "img": "img/King_Pufferfish.png", "rarity": ""}, {"id": "Chocolate_Bunny", "name": "Chocolate Bunny", "img": "img/Chocolate_Bunny.png", "rarity": ""}, {"id": "Night_Terror", "name": "Night Terror", "img": "img/Night_Terror.png", "rarity": ""}, {"id": "Teddy_Bear", "name": "Teddy Bear", "img": "img/Teddy_Bear.png", "rarity": ""}, {"id": "Rainbow_Master", "name": "Rainbow Master", "img": "img/Rainbow_Master.png", "rarity": ""}, {"id": "Guardian_Elemental", "name": "Guardian Elemental", "img": "img/Guardian_Elemental.png", "rarity": ""}, {"id": "Iridium_Prisma", "name": "Iridium Prisma", "img": "img/Iridium_Prisma.png", "rarity": ""}, {"id": "Easter_Defender", "name": "Easter Defender", "img": "img/Easter_Defender.png", "rarity": ""}, {"id": "Demon_Snake", "name": "Demon Snake", "img": "img/Demon_Snake.png", "rarity": ""}, {"id": "Tetranium", "name": "Tetranium", "img": "img/Tetranium.png", "rarity": ""}, {"id": "Galactic_Shock", "name": "Galactic Shock", "img": "img/Galactic_Shock.png", "rarity": ""}, {"id": "Karma", "name": "Karma", "img": "img/Karma.png", "rarity": ""}, {"id": "Demoncore", "name": "Demoncore", "img": "img/Demoncore.png", "rarity": ""}, {"id": "Molten_Split", "name": "Molten Split", "img": "img/Molten_Split.png", "rarity": ""}, {"id": "Scorpio", "name": "Scorpio", "img": "img/Scorpio.png", "rarity": ""}, {"id": "Radiant_Protector", "name": "Radiant Protector", "img": "img/Radiant_Protector.png", "rarity": ""}, {"id": "Dragon_Plushie_2", "name": "Dragon Plushie", "img": "img/Dragon_Plushie_2.png", "rarity": ""}, {"id": "Spirit_God", "name": "Spirit God", "img": "img/Spirit_God.png", "rarity": ""}, {"id": "Angel_of_Darkness", "name": "Angel of Darkness", "img": "img/Angel_of_Darkness.png", "rarity": ""}, {"id": "Overseer", "name": "Overseer", "img": "img/Overseer.png", "rarity": ""}, {"id": "Elephant_Plushie_2", "name": "Elephant Plushie", "img": "img/Elephant_Plushie_2.png", "rarity": ""}, {"id": "Kraken_Couplet", "name": "Kraken Couplet", "img": "img/Kraken_Couplet.png", "rarity": ""}, {"id": "Lucky_Tophat", "name": "Lucky Tophat", "img": "img/Lucky_Tophat.png", "rarity": ""}, {"id": "Dark_Soul", "name": "Dark Soul", "img": "img/Dark_Soul.png", "rarity": ""}, {"id": "Mythic_King_Slime", "name": "Mythic King Slime", "img": "img/Mythic_King_Slime.png", "rarity": ""}, {"id": "Mythic_Ice_Basilisk", "name": "Mythic Ice Basilisk", "img": "img/Mythic_Ice_Basilisk.png", "rarity": ""}, {"id": "Ice_Basilisk", "name": "Ice Basilisk", "img": "img/Ice_Basilisk.png", "rarity": ""}, {"id": "Slime_Overlord", "name": "Slime Overlord", "img": "img/Slime_Overlord.png", "rarity": ""}, {"id": "Mythic_Fire_Basilisk", "name": "Mythic Fire Basilisk", "img": "img/Mythic_Fire_Basilisk.png", "rarity": ""}, {"id": "Mythic_Slime_Cube", "name": "Mythic Slime Cube", "img": "img/Mythic_Slime_Cube.png", "rarity": ""}, {"id": "Mythic_Eternal_Pumpkin", "name": "Mythic Eternal Pumpkin", "img": "img/Mythic_Eternal_Pumpkin.png", "rarity": ""}, {"id": "Autumnal_Master", "name": "Autumnal Master", "img": "img/Autumnal_Master.png", "rarity": ""}, {"id": "Eternal_Pumpkin", "name": "Eternal Pumpkin", "img": "img/Eternal_Pumpkin.png", "rarity": ""}, {"id": "Mythic_Autumnal_Master", "name": "Mythic Autumnal Master", "img": "img/Mythic_Autumnal_Master.png", "rarity": ""}, {"id": "Almighty_Pumpkin", "name": "Almighty Pumpkin", "img": "img/Almighty_Pumpkin.png", "rarity": ""}, {"id": "Autumn_Dragon", "name": "Autumn Dragon", "img": "img/Autumn_Dragon.png", "rarity": ""}, {"id": "Koi_2", "name": "Koi", "img": "img/Koi_2.png", "rarity": ""}, {"id": "Mythic_Almighty_Pumpkin", "name": "Mythic Almighty Pumpkin", "img": "img/Mythic_Almighty_Pumpkin.png", "rarity": ""}, {"id": "Mythic_Koi", "name": "Mythic Koi", "img": "img/Mythic_Koi.png", "rarity": ""}, {"id": "Tophat__A_", "name": "Tophat (A)", "img": "img/Tophat__A_.png", "rarity": ""}, {"id": "Tophat__B_", "name": "Tophat (B)", "img": "img/Tophat__B_.png", "rarity": ""}, {"id": "Tophat__C_", "name": "Tophat (C)", "img": "img/Tophat__C_.png", "rarity": ""}, {"id": "Tophat__D_", "name": "Tophat (D)", "img": "img/Tophat__D_.png", "rarity": ""}, {"id": "Tophat__E_", "name": "Tophat (E)", "img": "img/Tophat__E_.png", "rarity": ""}, {"id": "Unicore", "name": "Unicore", "img": "img/Unicore.png", "rarity": ""}, {"id": "CORE", "name": "CORE", "img": "img/CORE.png", "rarity": ""}, {"id": "Galaxium", "name": "Galaxium", "img": "img/Galaxium.png", "rarity": ""}, {"id": "Mythic_CORE", "name": "Mythic CORE", "img": "img/Mythic_CORE.png", "rarity": ""}, {"id": "Mythic_Galaxium", "name": "Mythic Galaxium", "img": "img/Mythic_Galaxium.png", "rarity": ""}, {"id": "Mythic_Unicore", "name": "Mythic Unicore", "img": "img/Mythic_Unicore.png", "rarity": ""}, {"id": "Mythic_Plasma_Wolflord", "name": "Mythic Plasma Wolflord", "img": "img/Mythic_Plasma_Wolflord.png", "rarity": ""}, {"id": "Fracture", "name": "Fracture", "img": "img/Fracture.png", "rarity": ""}, {"id": "Dowodle", "name": "Dowodle", "img": "img/Dowodle.png", "rarity": ""}, {"id": "Enraged_Phoenix", "name": "Enraged Phoenix", "img": "img/Enraged_Phoenix.png", "rarity": ""}, {"id": "Beta_TV_2", "name": "Beta TV", "img": "img/Beta_TV_2.png", "rarity": ""}, {"id": "Candycorn_Shard", "name": "Candycorn Shard", "img": "img/Candycorn_Shard.png", "rarity": ""}, {"id": "Trick_O__Treat", "name": "Trick O' Treat", "img": "img/Trick_O__Treat.png", "rarity": ""}, {"id": "Mythic_Trick_O__Emperor", "name": "Mythic Trick O' Emperor", "img": "img/Mythic_Trick_O__Emperor.png", "rarity": ""}, {"id": "Mythic_Trick_O__Treat", "name": "Mythic Trick O' Treat", "img": "img/Mythic_Trick_O__Treat.png", "rarity": ""}, {"id": "Candycorn_Lord", "name": "Candycorn Lord", "img": "img/Candycorn_Lord.png", "rarity": ""}, {"id": "Mythic_Candycorn_Lord", "name": "Mythic Candycorn Lord", "img": "img/Mythic_Candycorn_Lord.png", "rarity": ""}, {"id": "Mythic_Dragonfruit", "name": "Mythic Dragonfruit", "img": "img/Mythic_Dragonfruit.png", "rarity": ""}, {"id": "Air_Basilisk", "name": "Air Basilisk", "img": "img/Air_Basilisk.png", "rarity": ""}, {"id": "Robot_2_0", "name": "Robot 2.0", "img": "img/Robot_2_0.png", "rarity": ""}, {"id": "Mythic_Electric_Basilisk", "name": "Mythic Electric Basilisk", "img": "img/Mythic_Electric_Basilisk.png", "rarity": ""}, {"id": "Mythic_Pastel_Hexarium", "name": "Mythic Pastel Hexarium", "img": "img/Mythic_Pastel_Hexarium.png", "rarity": ""}, {"id": "Pastel_Hexarium", "name": "Pastel Hexarium", "img": "img/Pastel_Hexarium.png", "rarity": ""}, {"id": "Pastel_Phoenix", "name": "Pastel Phoenix", "img": "img/Pastel_Phoenix.png", "rarity": ""}, {"id": "Mythic_Pastel_Phoenix", "name": "Mythic Pastel Phoenix", "img": "img/Mythic_Pastel_Phoenix.png", "rarity": ""}, {"id": "Pastel_Dragon", "name": "Pastel Dragon", "img": "img/Pastel_Dragon.png", "rarity": ""}, {"id": "Pastel_Angel", "name": "Pastel Angel", "img": "img/Pastel_Angel.png", "rarity": ""}, {"id": "Wolflord", "name": "Wolflord", "img": "img/Wolflord.png", "rarity": ""}, {"id": "Sea_Star", "name": "Sea Star", "img": "img/Sea_Star.png", "rarity": ""}, {"id": "Gryphon", "name": "Gryphon", "img": "img/Gryphon.png", "rarity": ""}, {"id": "Dogcat", "name": "Dogcat", "img": "img/Dogcat.png", "rarity": ""}, {"id": "Giant_Pearl", "name": "Giant Pearl", "img": "img/Giant_Pearl.png", "rarity": ""}, {"id": "Mythic_Air_Basilisk", "name": "Mythic Air Basilisk", "img": "img/Mythic_Air_Basilisk.png", "rarity": ""}]; // [{id,name,img,rarity}] from the game's own data, game order
+const KIND="pets";
+const TIERS=[
+  {key:"mythic",name:"Mythic",color:"var(--t-mythic)"},
+  {key:"legendary",name:"Legendary",color:"var(--t-legendary)"},
+  {key:"epic",name:"Epic",color:"var(--t-epic)"},
+  {key:"rare",name:"Rare",color:"var(--t-rare)"},
+  {key:"uncommon",name:"Uncommon",color:"var(--t-uncommon)"},
+  {key:"common",name:"Common",color:"var(--t-common)"},
+];
+const N=ITEMS.length;
+const IDS=ITEMS.map(it=>it.id);
+const BY=Object.fromEntries(ITEMS.map((it,i)=>[it.id,{...it,n:i+1}]));
+const EXTRA={godly:"#ff7a00",divine:"#ffffff",celestial:"#5ef2ff"}; // game-only tiers above Mythic (shoes)
+const gameColor=r=>{const k=String(r||"").toLowerCase();const t=TIERS.find(t=>t.key===k);return t?t.color:(EXTRA[k]||"transparent")};
+const emptyState=()=>Object.fromEntries(TIERS.map(t=>[t.key,[]]));
+let state=emptyState(); // tier -> [item id] in display order
+
+const $=id=>document.getElementById(id);
+const statusEl=$("status");
+function tierOf(id){for(const t of TIERS){if(state[t.key].includes(id))return t.key}return null}
+function normalize(s){
+  const out=emptyState(),seen=new Set();
+  if(s&&typeof s==="object")for(const t of TIERS){const arr=Array.isArray(s[t.key])?s[t.key]:[];for(const v of arr){if(typeof v==="string"&&BY[v]&&!seen.has(v)){seen.add(v);out[t.key].push(v)}}}
+  return out;
+}
+
+function makeCard(id){
+  const it=BY[id];
+  const c=document.createElement("div");
+  c.className="card";c.tabIndex=0;c.draggable=true;c.dataset.id=id;
+  c.setAttribute("role","button");c.setAttribute("aria-label",it.name);c.title=it.name+(it.rarity?" (game: "+it.rarity+")":"");
+  const im=document.createElement("img");im.src=it.img;im.alt="";im.loading="lazy";
+  const nm=document.createElement("div");nm.className="nm";nm.textContent=it.name;
+  const gr=document.createElement("span");gr.className="gr";gr.style.background=gameColor(it.rarity);
+  c.append(im,nm,gr);
+  c.addEventListener("click",()=>openInsp(id));
+  c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openInsp(id)}});
+  c.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",id);e.dataTransfer.effectAllowed="move";c.classList.add("dragging")});
+  c.addEventListener("dragend",()=>c.classList.remove("dragging"));
+  return c;
+}
+function wireLane(lane){
+  lane.addEventListener("dragover",e=>{e.preventDefault();lane.classList.add("over")});
+  lane.addEventListener("dragleave",e=>{if(!lane.contains(e.relatedTarget))lane.classList.remove("over")});
+  lane.addEventListener("drop",e=>{
+    e.preventDefault();lane.classList.remove("over");
+    const id=e.dataTransfer.getData("text/plain");if(!BY[id])return;
+    const target=e.target.closest&&e.target.closest(".card");
+    place(id,lane.dataset.tier,target?target.dataset.id:null);
+  });
+}
+const tiersEl=$("tiers"),poolEl=$("pool");
+const lanes={};
+for(const t of TIERS){
+  const row=document.createElement("div");row.className="row";row.dataset.tier=t.key;
+  const lab=document.createElement("div");lab.className="label";lab.style.background=t.color;
+  const nm=document.createElement("span");nm.className="name";nm.textContent=t.name;
+  const ct=document.createElement("span");ct.className="count";lab.append(nm,ct);
+  const lane=document.createElement("div");lane.className="lane";lane.dataset.tier=t.key;lane.setAttribute("aria-label",t.name+" tier");
+  wireLane(lane);lanes[t.key]={lane,count:ct};
+  row.append(lab,lane);tiersEl.append(row);
+}
+wireLane(poolEl);
+const cards=Object.fromEntries(IDS.map(id=>[id,makeCard(id)]));
+
+function render(){
+  let ranked=0;
+  for(const t of TIERS){
+    const {lane,count}=lanes[t.key];
+    const list=state[t.key];ranked+=list.length;
+    lane.replaceChildren(...list.map(id=>cards[id]));
+    if(!list.length){const e=document.createElement("span");e.className="empty";e.textContent="Drop here";lane.append(e)}
+    count.textContent=list.length;
+  }
+  const placed=new Set(TIERS.flatMap(t=>state[t.key]));
+  const pool=IDS.filter(id=>!placed.has(id)).map(id=>cards[id]);
+  poolEl.replaceChildren(...pool);
+  if(!pool.length){const e=document.createElement("span");e.className="empty";e.textContent="All "+N+" ranked. Tell Claude you're done.";poolEl.append(e)}
+  $("poolCount").textContent="("+pool.length+")";
+  $("progress").replaceChildren(Object.assign(document.createElement("b"),{textContent:ranked})," / "+N+" ranked");
+  if(!$("insp").hidden)fillInsp();
+}
+
+function place(id,tier,before){
+  for(const t of TIERS)state[t.key]=state[t.key].filter(x=>x!==id);
+  if(tier&&tier!=="pool"){
+    const arr=state[tier];const i=before?arr.indexOf(before):-1;
+    if(i>=0)arr.splice(i,0,id);else arr.push(id);
+  }
+  render();save();
+}
+
+let cur=IDS[0];
+const tierBtns=$("tierBtns");
+TIERS.forEach((t,i)=>{
+  const b=document.createElement("button");b.type="button";b.dataset.tier=t.key;b.style.background=t.color;
+  const s=document.createElement("span");s.textContent=t.name;const k=document.createElement("kbd");k.textContent=i+1;
+  b.append(s,k);b.addEventListener("click",()=>rankCurrent(t.key));tierBtns.append(b);
+});
+const step=(id,d)=>IDS[(BY[id].n-1+d+N)%N];
+function nextUnranked(from){for(let k=1;k<=N;k++){const id=step(from,k);if(!tierOf(id))return id}return null}
+function openInsp(id){cur=id;$("insp").hidden=false;fillInsp();$("inspClose").focus()}
+function closeInsp(){$("insp").hidden=true;cards[cur]&&cards[cur].focus()}
+function fillInsp(){
+  const it=BY[cur];
+  $("inspImg").src=it.img;$("inspImg").alt=it.name;
+  $("inspNum").textContent="#"+it.n+" of "+N+(it.rarity?" · in game now: "+it.rarity:"");
+  $("inspName").textContent=it.name;
+  const t=tierOf(cur);const tt=TIERS.find(x=>x.key===t);
+  $("inspCur").textContent=tt?"Ranked "+tt.name:"Not ranked yet";
+  for(const b of tierBtns.children)b.classList.toggle("on",b.dataset.tier===t);
+  $("unrankBtn").disabled=!t;
+  const pre=new Image();pre.src=BY[step(cur,1)].img;
+}
+function rankCurrent(tier){
+  place(cur,tier,null);
+  const nx=nextUnranked(cur);
+  if(nx){cur=nx;fillInsp()}else{fillInsp();statusEl.textContent="Everything has a tier."}
+}
+$("inspClose").onclick=closeInsp;
+$("prevBtn").onclick=()=>{cur=step(cur,-1);fillInsp()};
+$("nextBtn").onclick=()=>{cur=step(cur,1);fillInsp()};
+$("skipBtn").onclick=()=>{const nx=nextUnranked(cur);if(nx){cur=nx;fillInsp()}};
+$("unrankBtn").onclick=()=>place(cur,"pool");
+$("insp").addEventListener("click",e=>{if(e.target.id==="insp")closeInsp()});
+document.addEventListener("keydown",e=>{
+  if($("insp").hidden)return;
+  if(e.key==="Escape")closeInsp();
+  else if(e.key==="ArrowRight")$("nextBtn").click();
+  else if(e.key==="ArrowLeft")$("prevBtn").click();
+  else if(/^[1-6]$/.test(e.key))rankCurrent(TIERS[Number(e.key)-1].key);
+  else if(e.key==="0"||e.key==="Backspace")place(cur,"pool");
+});
+$("startBtn").onclick=()=>openInsp(nextUnranked(IDS[N-1])||IDS[0]);
+
+function rankingText(){
+  const lines=[];
+  for(const t of TIERS){lines.push(t.name.toUpperCase()+" ("+state[t.key].length+")");for(const id of state[t.key])lines.push("  "+BY[id].name)}
+  const placed=new Set(TIERS.flatMap(t=>state[t.key]));const un=IDS.filter(id=>!placed.has(id));
+  if(un.length){lines.push("UNRANKED ("+un.length+")");un.forEach(id=>lines.push("  "+BY[id].name))}
+  return lines.join("\n");
+}
+$("copyBtn").onclick=async()=>{
+  const txt=rankingText();
+  try{await navigator.clipboard.writeText(txt);statusEl.textContent="Ranking copied. Paste it to Damir."}
+  catch{const ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="width:100%;height:200px";statusEl.replaceChildren("Copy this text:",ta);ta.select()}
+};
+let armTimer=null;
+$("resetBtn").onclick=()=>{
+  const b=$("resetBtn");
+  if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="Tap again to clear all";clearTimeout(armTimer);armTimer=setTimeout(()=>{b.classList.remove("armed");b.textContent="Reset"},3000);return}
+  clearTimeout(armTimer);b.classList.remove("armed");b.textContent="Reset";
+  state=emptyState();render();save();
+};
+
+/* saving: one shared db doc (everyone with the link sees the same list; Claude reads it), localStorage backup */
+const LS=KIND+"-tiers-v1";
+let docRef=null,writing=false,dirty=false,lastSent="";
+try{const s=JSON.parse(localStorage.getItem(LS)||"null");if(s)state=normalize(s)}catch{}
+render();
+function save(){
+  try{localStorage.setItem(LS,JSON.stringify(state))}catch{}
+  if(!docRef){statusEl.textContent="Saved on this device.";return}
+  dirty=true;flush();
+}
+let flushTimer=null;
+function flush(){
+  clearTimeout(flushTimer);
+  flushTimer=setTimeout(async()=>{
+    if(writing||!dirty||!docRef)return;
+    const body=JSON.stringify(state);if(body===lastSent){dirty=false;return}
+    writing=true;dirty=false;statusEl.textContent="Saving…";
+    try{await docRef.set({tiers:state,updatedAt:new Date().toISOString()});lastSent=body;statusEl.textContent="Saved. Claude can read this ranking."}
+    catch(e){statusEl.textContent="Couldn't save online ("+(e&&e.code||"error")+"). Kept on this device; use Copy ranking.";}
+    writing=false;if(dirty)flush();
+  },400);
+}
+(async()=>{
+  let db=null;try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch{}
+  if(!db){statusEl.textContent="Saved on this device. When done, press Copy ranking and send it to Damir.";return}
+  docRef=db.doc("tierlist/main");
+  const t=setTimeout(()=>{statusEl.textContent="Can't reach online save yet; changes are kept on this device."},10000);
+  let first=true;
+  docRef.onSnapshot(snap=>{
+    if(!snap.metadata||!snap.metadata.fromCache)clearTimeout(t);
+    if(snap.metadata&&snap.metadata.hasPendingWrites)return;
+    if(snap.exists){
+      const remote=normalize((snap.data()||{}).tiers);const rb=JSON.stringify(remote);
+      if(first){
+        const localCount=TIERS.reduce((a,k)=>a+state[k.key].length,0);
+        const remoteCount=TIERS.reduce((a,k)=>a+remote[k.key].length,0);
+        if(remoteCount===0&&localCount>0){first=false;dirty=true;flush();return}
+      }
+      if(rb!==JSON.stringify(state)&&!writing&&!dirty){state=remote;lastSent=rb;try{localStorage.setItem(LS,rb)}catch{};render()}
+      else lastSent=rb;
+    }else if(first&&TIERS.some(k=>state[k.key].length)){dirty=true;flush()}
+    if(first){first=false;if(!statusEl.textContent||statusEl.textContent.startsWith("Saving on"))statusEl.textContent="Connected. Your ranking saves automatically."}
+  },e=>{clearTimeout(t);docRef=null;statusEl.textContent="Online save stopped ("+(e&&e.code||"error")+"). Kept on this device; use Copy ranking."});
+})();
+</script>
